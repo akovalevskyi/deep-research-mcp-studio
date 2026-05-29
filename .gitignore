@@ -1,0 +1,16 @@
+# Node dependencies
+node_modules/
+
+# Compiled files
+dist/
+.astro/
+
+# Secrets & Private Keys
+.env*
+*vertex_key.json
+research_results/
+research_history.db
+
+# System/macOS
+.DS_Store
+.idea/

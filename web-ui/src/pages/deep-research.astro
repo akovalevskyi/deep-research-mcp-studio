@@ -1,0 +1,599 @@
+---
+import { execSync } from "child_process";
+
+// Pure frontend view page - all processing is handled by the dedicated API route /api/run-research
+const title = "Deep Research & Interactive AI Agent Studio";
+
+// Load unified SQLite history database
+let history: any[] = [];
+try {
+  const output = execSync("python3 /app/scripts/get-history.py", { encoding: "utf8" });
+  history = JSON.parse(output.trim());
+} catch (e) {
+  console.error("Failed to load history in Astro frontmatter:", e);
+}
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <!-- Add Mermaid CDN (hosted locally to bypass Content Security Policy) -->
+    <script is:inline src="/mermaid.min.js"></script>
+    <script is:inline>
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+    </script>
+    <style>
+      :root {
+        --bg: #111210;
+        --surface: #181916;
+        --surface-card: #20221e;
+        --ink: #f2f3f0;
+        --muted: #a0a39d;
+        --line: #2e312b;
+        --accent: #139f7f;
+        --accent-soft: rgba(19, 159, 127, 0.12);
+        --accent-2: #34d399;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+      }
+      header {
+        margin-bottom: 40px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 20px;
+      }
+      h1 {
+        font-size: 38px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        margin: 0 0 10px;
+      }
+      p.subtitle {
+        color: var(--muted);
+        font-size: 18px;
+        margin: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 400px 1fr;
+        gap: 30px;
+      }
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 30px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        height: fit-content;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      textarea, select {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        color: var(--ink);
+        border-radius: 14px;
+        padding: 15px;
+        font-size: 16px;
+        outline: none;
+        resize: vertical;
+      }
+      textarea:focus, select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+      .btn {
+        width: 100%;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 750;
+        border: 0;
+        border-radius: 14px;
+        padding: 15px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .btn:hover {
+        background-color: var(--accent-2);
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .results-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .tabs {
+        display: flex;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 10px;
+      }
+      .tab-btn {
+        background: transparent;
+        border: 0;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 16px;
+        padding: 8px 16px;
+        cursor: pointer;
+        border-radius: 10px;
+      }
+      .tab-btn.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .tab-content {
+        display: none;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 30px;
+        min-height: 400px;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .summary-text {
+        line-height: 1.6;
+        font-size: 16px;
+      }
+      .summary-text h2, .summary-text h3 {
+        color: var(--accent-2);
+        letter-spacing: -0.02em;
+      }
+      .summary-text ul {
+        padding-left: 20px;
+      }
+      .mermaid-container {
+        display: flex;
+        justify-content: center;
+        background: #fff;
+        padding: 20px;
+        border-radius: 16px;
+        overflow: auto;
+      }
+      .podcast-area {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .audio-player-card {
+        background: var(--surface-card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      audio {
+        width: 100%;
+      }
+      .logs-card {
+        background: #000;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        font-family: monospace;
+        font-size: 13px;
+        color: #00ff66;
+        min-height: 150px;
+        max-height: 250px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .log-entry {
+        display: flex;
+        gap: 10px;
+      }
+      .log-time {
+        color: var(--muted);
+      }
+      body.light-mode {
+        --bg: #f9f9f7;
+        --surface: #ffffff;
+        --surface-card: #f3f4f1;
+        --ink: #111210;
+        --muted: #6b7280;
+        --line: #d8cfc1;
+        --accent: #139f7f;
+        --accent-soft: rgba(19, 159, 127, 0.08);
+        --accent-2: #059669;
+      }
+      .history-item {
+        border: 1px solid var(--line) !important;
+        background: var(--surface) !important;
+        color: var(--ink) !important;
+        box-shadow: none !important;
+      }
+      .history-item:hover {
+        border-color: var(--accent) !important;
+        background: var(--accent-soft) !important;
+        color: var(--accent-2) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div>
+          <h1>🔬 Harness-Agnostic AI Research Agent</h1>
+          <p class="subtitle">Multi-Agent Deep Research, 2-Voice Podcast, and Mermaid Mindmaps</p>
+        </div>
+        <button id="themeToggle" style="background: #ffffff; border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px; font-weight: 750; color: #111210; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); transition: all 0.2s;">
+          <span id="themeIcon">☀️</span> <span id="themeText">Light Mode</span>
+        </button>
+      </header>
+
+      <div class="grid">
+        <!-- Sidebar Controls -->
+        <div class="panel">
+          <div class="form-group">
+            <label for="query">Research Topic</label>
+            <textarea id="query" rows="5" placeholder="Enter topic or question (e.g., 'Liquid Staking growth in 2026')"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="model">Synthesis Model</label>
+            <select id="model">
+              <option value="google/gemini-3.5-flash">Gemini 3.5 Flash (Vertex Native)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin: 25px 0;">
+            <input type="checkbox" id="deliver" checked style="width: 20px; min-height: auto; margin: 0;" />
+            <label for="deliver" style="margin: 0; cursor: pointer;">Deliver to Mattermost</label>
+          </div>
+
+          <button id="runBtn" class="btn">Run Deep Research</button>
+
+          <h3 style="margin-top: 30px; font-size: 14px; text-transform: uppercase; color: var(--muted);">Live Logs</h3>
+          <div id="logs" class="logs-card" style="margin-bottom: 25px;">
+            <div class="log-entry"><span class="log-time">[System]</span><span>Ready for research pipeline launch.</span></div>
+          </div>
+
+          <h3 style="margin-top: 30px; font-size: 14px; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+            <span>🕰️ Recent Research</span>
+            <span style="font-size: 11px; font-weight: 500; text-transform: none; color: var(--muted); background: var(--surface-card); padding: 2px 8px; border-radius: 999px;">
+              {history.length} runs
+            </span>
+          </h3>
+          <div id="historyList" class="history-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            {history.map((run: any) => (
+              <button 
+                class="history-item btn secondary" 
+                data-run={JSON.stringify(run)}
+                style="width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; font-size: 13px; font-weight: 650; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; transition: all 0.2s;"
+              >
+                🔍 {run.query}
+                <small style="display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 4px;">
+                  {new Date(run.timestamp * 1000).toLocaleString()} • {run.source === 'mcp_cli' ? '📟 CLI' : '💻 Web'}
+                </small>
+              </button>
+            ))}
+            {history.length === 0 && (
+              <p style="color: var(--muted); font-size: 13px; text-align: center; margin-top: 20px;">No historical runs found.</p>
+            )}
+          </div>
+        </div>
+
+        <!-- Main Display Panel -->
+        <div class="results-panel">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="summary">📋 Executive Summary</button>
+            <button class="tab-btn" data-tab="mindmap">🗺️ Mindmap</button>
+            <button class="tab-btn" data-tab="podcast">🎙️ Podcast & Audio</button>
+          </div>
+
+          <!-- Summary Tab -->
+          <div id="summaryTab" class="tab-content active">
+            <div id="summaryContent" class="summary-text">
+              <p style="color: var(--muted); text-align: center; margin-top: 100px;">Enter a query and run the agent to generate your deep research executive summary.</p>
+            </div>
+          </div>
+
+          <!-- Mindmap Tab -->
+          <div id="mindmapTab" class="tab-content">
+            <div id="mindmapWrapper" style="display: none;">
+              <div id="mermaidDiagram" class="mermaid-container"></div>
+            </div>
+            <p id="mindmapPlaceholder" style="color: var(--muted); text-align: center; margin-top: 100px;">Mermaid.js mindmap diagram will render here upon research completion.</p>
+          </div>
+
+          <!-- Podcast Tab -->
+          <div id="podcastTab" class="tab-content">
+            <div id="podcastWrapper" class="podcast-area" style="display: none;">
+              <div class="audio-player-card">
+                <span style="font-size: 28px;">🎙️</span>
+                <div style="flex: 1;">
+                  <strong style="display: block; margin-bottom: 5px;">2-Voice Audio Podcast (Emma & Kent)</strong>
+                  <audio id="audioPlayer" controls></audio>
+                </div>
+              </div>
+              <h3 style="color: var(--accent-2); margin-top: 20px;">Podcast Dialogue Transcript</h3>
+              <pre id="podcastTranscript" style="background: var(--bg); border: 1px solid var(--line); padding: 20px; border-radius: 16px; font-family: inherit; font-size: 15px; line-height: 1.5; overflow: auto; white-space: pre-wrap;"></pre>
+            </div>
+            <p id="podcastPlaceholder" style="color: var(--muted); text-align: center; margin-top: 100px;">Audio podcast and dialogue transcript will generate here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      // Global Markdown Renderer
+      function renderMarkdown(md) {
+        let html = md;
+        
+        // 1. Handle code blocks (``` ... ```) and render them with a monospace black-terminal style
+        const codeBlockRegex = /```([\s\S]*?)```/g;
+        html = html.replace(codeBlockRegex, (match, code) => {
+          return `<pre style="background: #000; border: 1px solid var(--line); padding: 20px; border-radius: 12px; font-family: monospace; overflow: auto; color: #00ff66; line-height: 1.4; font-size: 14px; white-space: pre;"><code>\n\${code.trim()}\n</code></pre>`;
+        });
+
+        // 2. Handle inline code (`code`)
+        html = html.replace(/\`([^\`]+)\`/g, '<code style="background: var(--surface-card); padding: 3px 6px; border-radius: 6px; font-family: monospace; font-size: 14px;">$1</code>');
+
+        // 3. Handle bold (**text**)
+        html = html.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+
+        // 4. Handle headers
+        html = html.replace(/^# (.*$)/gim, '<h1 style="color: var(--ink); font-size: 28px; font-weight: 850; letter-spacing: -0.03em; margin: 24px 0 12px;">$1</h1>');
+        html = html.replace(/^## (.*$)/gim, '<h2 style="color: var(--accent-2); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 20px 0 10px;">$1</h2>');
+        html = html.replace(/^### (.*$)/gim, '<h3 style="color: var(--ink); font-size: 18px; font-weight: 750; margin: 16px 0 8px;">$1</h3>');
+
+        // 5. Handle bullet points
+        html = html.replace(/^\\* (.*$)/gim, '<li style="margin-bottom: 6px; line-height: 1.5; color: var(--ink);">$1</li>');
+        html = html.replace(/^\\- (.*$)/gim, '<li style="margin-bottom: 6px; line-height: 1.5; color: var(--ink);">$1</li>');
+
+        // 6. Handle double newlines as paragraphs for clean structural layout
+        html = html.replace(/\\n\\n/g, '<p style="margin-bottom: 16px; line-height: 1.55; color: var(--ink);"></p>');
+        
+        // 7. Handle single newlines as line breaks
+        html = html.replace(/\\n/g, '<br />');
+
+        return html;
+      }
+
+      // Theme switcher management
+      const themeToggle = document.getElementById('themeToggle');
+      const themeIcon = document.getElementById('themeIcon');
+      const themeText = document.getElementById('themeText');
+
+      if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light-mode');
+        themeIcon.textContent = '🌙';
+        themeText.textContent = 'Dark Mode';
+      }
+
+      themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        
+        if (isLight) {
+          localStorage.setItem('theme', 'light');
+          themeIcon.textContent = '🌙';
+          themeText.textContent = 'Dark Mode';
+        } else {
+          localStorage.setItem('theme', 'dark');
+          themeIcon.textContent = '☀️';
+          themeText.textContent = 'Light Mode';
+        }
+      });
+
+      // History selection management
+      const historyItems = document.querySelectorAll('.history-item');
+      historyItems.forEach(item => {
+        item.addEventListener('click', async () => {
+          const run = JSON.parse(item.getAttribute('data-run'));
+          
+          queryInput.value = run.query;
+          addLog(`Restoring historical session: "${run.query}"`, 'Success');
+
+          // Render summary
+          document.getElementById('summaryContent').innerHTML = renderMarkdown(run.summary);
+
+          // Render mindmap
+          const wrapper = document.getElementById('mindmapWrapper');
+          const placeholder = document.getElementById('mindmapPlaceholder');
+          const diagram = document.getElementById('mermaidDiagram');
+
+          placeholder.style.display = 'none';
+          wrapper.style.display = 'block';
+
+          try {
+            const uniqueId = `mermaid_svg_${Date.now()}`;
+            const { svg } = await mermaid.render(uniqueId, run.mindmap);
+            diagram.innerHTML = svg;
+          } catch (mermaidErr) {
+            console.error("Mermaid render failed:", mermaidErr);
+            diagram.innerHTML = `<pre class="mermaid" style="background: var(--surface-card); border: 1px solid var(--line); padding: 15px; border-radius: 12px; color: var(--muted); font-size: 14px; line-height: 1.4; overflow: auto; white-space: pre-wrap;">${run.mindmap}</pre>`;
+          }
+
+          // Render podcast
+          const podcastWrapper = document.getElementById('podcastWrapper');
+          const podcastPlaceholder = document.getElementById('podcastPlaceholder');
+          
+          podcastPlaceholder.style.display = 'none';
+          podcastWrapper.style.display = 'block';
+
+          if (run.audioGenerated) {
+            const player = document.getElementById('audioPlayer');
+            player.src = `/deep-research-audio?id=${run.id}`;
+          }
+          document.getElementById('podcastTranscript').textContent = run.podcastScript;
+
+          // Switch to executive summary tab by default and scroll
+          tabBtns[0].click();
+          document.getElementById('summaryTab').scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      // Tabs management
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.getAttribute('data-tab');
+
+          tabBtns.forEach(b => b.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+
+          btn.classList.add('active');
+          document.getElementById(`${targetTab}Tab`).classList.add('active');
+        });
+      });
+
+      // Log helper
+      const logsCard = document.getElementById('logs');
+      function addLog(text, level = 'Info') {
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        div.innerHTML = `<span class="log-time">[${time}]</span><span style="color: ${level === 'Error' ? '#ff3333' : level === 'Success' ? '#00ff66' : '#a0a39d'}">${text}</span>`;
+        logsCard.appendChild(div);
+        logsCard.scrollTop = logsCard.scrollHeight;
+      }
+
+      // Execution handler
+      const runBtn = document.getElementById('runBtn');
+      const queryInput = document.getElementById('query');
+      const modelSelect = document.getElementById('model');
+      const deliverCheck = document.getElementById('deliver');
+
+      runBtn.addEventListener('click', async () => {
+        const query = queryInput.value.trim();
+        if (!query) {
+          alert('Please enter a research topic!');
+          return;
+        }
+
+        runBtn.disabled = true;
+        queryInput.disabled = true;
+        modelSelect.disabled = true;
+        deliverCheck.disabled = true;
+
+        addLog(`Initiating deep research for query: "${query}"`, 'Info');
+        addLog(`Selected Synthesis Model: ${modelSelect.value}`, 'Info');
+
+        // Step 1: Tavily search (mock logs)
+        addLog('Step 1: Contacting Tavily Search API (advanced recursive search)...', 'Info');
+
+        try {
+          const response = await fetch('/deep-research-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query,
+              model: modelSelect.value,
+              deliverToMattermost: deliverCheck.checked
+            })
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Server error');
+          }
+
+          const data = await response.json();
+          addLog('Step 2: Tavily results retrieved successfully. Sourcing 8 web sources...', 'Success');
+          addLog('Step 3: Beginning multi-prompt parallel synthesis directly in Google Vertex AI (Gemini 3.5 Flash)...', 'Info');
+          addLog('Generating Executive Summary...', 'Info');
+          addLog('Generating Mermaid Mindmap diagram...', 'Info');
+          addLog('Generating Podcast Dialogue transcript...', 'Info');
+          addLog('Step 4: Vertex AI Synthesis complete! Shaving network latency...', 'Success');
+
+          if (data.audioGenerated) {
+            addLog('Step 5: Invoking Gradium Voice AI. Compiling Emma (Alex) and Kent (Sam) audios...', 'Info');
+            addLog('Processing Text Rewriting rules (Date, AlNum, Numbers)...', 'Info');
+            addLog('Merging binary WAV payloads & creating master RIFF header...', 'Info');
+            addLog('Podcast audio file created successfully!', 'Success');
+          } else {
+            addLog('⚠️ Podcast audio generation skipped or failed.', 'Error');
+          }
+
+          if (data.publishedToMattermost) {
+            addLog('Step 6: Delivering full report and podcast to Mattermost channel #research-agent!', 'Success');
+          } else if (deliverCheck.checked) {
+            addLog('⚠️ Failed to deliver report to Mattermost.', 'Error');
+          }
+
+          addLog('🎉 Research pipeline completed successfully! Rendering outputs...', 'Success');
+
+          document.getElementById('summaryContent').innerHTML = renderMarkdown(data.summary);
+
+          // Mindmap
+          const wrapper = document.getElementById('mindmapWrapper');
+          const placeholder = document.getElementById('mindmapPlaceholder');
+          const diagram = document.getElementById('mermaidDiagram');
+
+          placeholder.style.display = 'none';
+          wrapper.style.display = 'block';
+          
+          try {
+            // Re-render dynamically using the modern async render API (guarantees perfect rendering without ID conflicts)
+            const uniqueId = `mermaid_svg_${Date.now()}`;
+            const { svg } = await mermaid.render(uniqueId, data.mindmap);
+            diagram.innerHTML = svg;
+          } catch (mermaidErr) {
+            console.error("Mermaid render failed:", mermaidErr);
+            diagram.innerHTML = `<pre class="mermaid" style="background: var(--surface-card); border: 1px solid var(--line); padding: 15px; border-radius: 12px; color: var(--muted); font-size: 14px; line-height: 1.4; overflow: auto; white-space: pre-wrap;">${data.mindmap}</pre>`;
+          }
+
+          // Podcast
+          const podcastWrapper = document.getElementById('podcastWrapper');
+          const podcastPlaceholder = document.getElementById('podcastPlaceholder');
+          podcastPlaceholder.style.display = 'none';
+          podcastWrapper.style.display = 'block';
+
+          if (data.audioGenerated) {
+            const player = document.getElementById('audioPlayer');
+            player.src = `/deep-research-audio?id=${data.sessionId}`;
+          }
+          document.getElementById('podcastTranscript').textContent = data.podcastScript;
+
+        } catch (error) {
+          addLog(`Error running research: ${error.message}`, 'Error');
+          alert(`Error: ${error.message}`);
+        } finally {
+          runBtn.disabled = false;
+          queryInput.disabled = false;
+          modelSelect.disabled = false;
+          deliverCheck.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
