@@ -10,7 +10,7 @@ export const POST: APIRoute = async ({ request }) => {
     const query = body.query;
     const model = body.model || "google/gemini-3.5-flash";
     const deliverToMattermost = body.deliverToMattermost !== false;
-    const testMode = body.testMode === true;
+    const testMode = body.testMode === true || body.testmode === true || String(body.testMode) === "true" || String(body.testmode) === "true";
 
     if (!query) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -106,10 +106,11 @@ export const POST: APIRoute = async ({ request }) => {
       return data.access_token;
     }
 
-    // Call Google Vertex AI Gemini 3.5 Flash directly
+    // Call Google Vertex AI Gemini directly
     async function callVertexAI(prompt, systemPrompt) {
       const token = await getGCPToken(sa);
-      const url = `https://aiplatform.googleapis.com/v1/projects/${sa.project_id}/locations/global/publishers/google/models/gemini-3.5-flash:generateContent`;
+      const modelName = testMode ? "gemini-3.1-flash-lite" : "gemini-3.5-flash";
+      const url = `https://aiplatform.googleapis.com/v1/projects/${sa.project_id}/locations/global/publishers/google/models/${modelName}:generateContent`;
 
       return retryWithBackoff(async () => {
         const r = await fetch(url, {

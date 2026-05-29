@@ -272,9 +272,14 @@ try {
             </select>
           </div>
 
-          <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin: 25px 0;">
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin: 25px 0 15px;">
             <input type="checkbox" id="deliver" checked style="width: 20px; min-height: auto; margin: 0;" />
             <label for="deliver" style="margin: 0; cursor: pointer;">Deliver to Mattermost</label>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin: 15px 0 25px;">
+            <input type="checkbox" id="testMode" style="width: 20px; min-height: auto; margin: 0;" />
+            <label for="testMode" style="margin: 0; cursor: pointer;">Test Mode (Low Cost)</label>
           </div>
 
           <button id="runBtn" class="btn">Run Deep Research</button>
@@ -492,6 +497,7 @@ try {
       const queryInput = document.getElementById('query');
       const modelSelect = document.getElementById('model');
       const deliverCheck = document.getElementById('deliver');
+      const testModeCheck = document.getElementById('testMode');
 
       runBtn.addEventListener('click', async () => {
         const query = queryInput.value.trim();
@@ -504,6 +510,7 @@ try {
         queryInput.disabled = true;
         modelSelect.disabled = true;
         deliverCheck.disabled = true;
+        testModeCheck.disabled = true;
 
         addLog(`Initiating deep research for query: "${query}"`, 'Info');
         addLog(`Selected Synthesis Model: ${modelSelect.value}`, 'Info');
@@ -518,7 +525,8 @@ try {
             body: JSON.stringify({
               query,
               model: modelSelect.value,
-              deliverToMattermost: deliverCheck.checked
+              deliverToMattermost: deliverCheck.checked,
+              testMode: testModeCheck.checked
             })
           });
 
@@ -592,6 +600,7 @@ try {
           queryInput.disabled = false;
           modelSelect.disabled = false;
           deliverCheck.disabled = false;
+          testModeCheck.disabled = false;
         }
       });
     </script>
